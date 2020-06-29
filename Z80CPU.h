@@ -1,5 +1,5 @@
 /*
- * Z80CPU.h
+ * IO.cc
  *
  *  Created on: 25 июн. 2020 г.
  *      Author: Даниил
@@ -9,95 +9,56 @@
 #define Z80CPU_H_
 
 #include "Memory.h"
+#include "libz80\z80.h"
 
-#pragma pack(push, 1)
-struct Z80Regs{
-	union{
-		uint16_t af;
-		struct{
-			uint8_t f;
-			uint8_t a;
-		};
-	};
+ byte In_mem	(void* param, ushort address);
+ void Out_mem (void* param, ushort address, byte data);
+ byte In_io	(void* param, ushort address);
+ void Out_io (void* param, ushort address, byte data);
 
-	union{
-		uint16_t bc;
-		struct{
-			uint8_t c;
-			uint8_t b;
-		};
-	};
 
-	union{
-		uint16_t de;
-		struct{
-			uint8_t e;
-			uint8_t d;
-		};
-	};
-
-	union{
-		uint16_t hl;
-		struct{
-			uint8_t l;
-			uint8_t h;
-		};
-	};
-
-	union{
-		uint16_t ix;
-		struct{
-			uint8_t ixl;
-			uint8_t ixh;
-		};
-	};
-
-	union{
-		uint16_t iy;
-		struct{
-			uint8_t iyl;
-			uint8_t iyh;
-		};
-	};
-
-	uint16_t pc;
-	uint16_t sp;
-
-	uint16_t i;
-	uint16_t r;
-};
-#pragma pack(pop)
-
-class Z80CPU{
+class Z80CPU
+{
 protected:
 	AddressSpace & _bus;
-	Z80Regs _regs {};
-	Z80Regs _shadow_regs {};
+	Z80Context _context {};
+	friend byte In_mem	(void* param, ushort address);
+	friend void Out_mem (void* param, ushort address, byte data);
+	friend byte In_io	(void* param, ushort address);
+	friend void Out_io (void* param, ushort address, byte data);
 
-	bool _iff1 {false};
-	bool _iff2 {false};
-
-	unsigned _ticks {0};
-	unsigned _state {0};
-
-	uint8_t _prefix {0};
-	uint8_t _instruction {0};
-	uint8_t _wait {0};
-
-	uint8_t get_reg(uint8_t) const;
 public:
-	Z80CPU(AddressSpace & bus): _bus(bus){}
-
-	void tick();
-	void reset();
+	Z80CPU(AddressSpace & bus): _bus(bus) {
+		_context.memRead = In_mem;
+		_context.memWrite = Out_mem;
+		_context.ioRead = In_io;
+		_context.ioWrite = Out_io;
+		_context.ioParam = this;
+		_context.memParam = this;
+	}
+	void tick() {
+		Z80Execute (&_context);
+	}
+	void ticks(unsigned ticks) {
+		Z80ExecuteTStates(&_context, ticks);
+	}
+	void reset() {
+		Z80RESET(&_context);
+	}
+	void intr(byte value) {
+		Z80INT(&_context,value);
+	}
+	void nmi() {
+		Z80NMI(&_context);
+	}
 
 	void save_state_sna(const char * filename);
 	void load_state_sna(const char * filename);
 	void load_state_z80(const char * filename);
 
+	void load_state_sna_libspectrum(const char * filename);
+	void load_state_z80_libspectrum(const char * filename);
+
 };
-
-
-
 
 #endif /* Z80CPU_H_ */
