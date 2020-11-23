@@ -42,7 +42,7 @@ public:
 	void main();
 
 protected:
-	ROM rom { "alco.rom" };
+	ROM rom { "zx.rom" };
 	RAM ram { 16 };
 	IO io { &_adrv };
 	AddressSpace system_bus { ram, rom, io };
